@@ -1,0 +1,1 @@
+{"build":{"builder":"NIXPACKS"},"deploy":{"startCommand":"node dist/index.js","healthcheckPath":"/mcp","restartPolicyType":"ON_FAILURE"}}
