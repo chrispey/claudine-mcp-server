@@ -21,7 +21,7 @@ import { SIGNAL_BOARD_HTML } from "../ui/signal-board.js";
  * support MCP Apps ignores `_meta.ui` and the tool behaves as a normal
  * text-only tool. The `content` array is populated either way.
  */
-const SIGNAL_BOARD_URI = "ui://claudine/signal-board";
+const SIGNAL_BOARD_URI = "ui://claudine/signal-board.html";
 
 export function registerHoldTools(server: McpServer): void {
 
@@ -190,7 +190,7 @@ export function registerHoldTools(server: McpServer): void {
 
   registerAppResource(
     server,
-    "signal_board_view",
+    SIGNAL_BOARD_URI,
     SIGNAL_BOARD_URI,
     {
       mimeType: RESOURCE_MIME_TYPE,
@@ -224,13 +224,24 @@ export function registerHoldTools(server: McpServer): void {
         min_intensity: z.number().min(0).max(1).default(0),
         limit: z.number().int().min(1).max(50).default(10),
       }),
+      outputSchema: z.object({
+        signals: z.array(z.object({
+          id: z.string(),
+          from: z.string(),
+          for: z.array(z.string()),
+          type: z.string(),
+          message: z.string(),
+          priority: z.string(),
+          intensity: z.number().nullable(),
+          created: z.string(),
+          resolved: z.string(),
+          url: z.string(),
+        })),
+        count: z.number(),
+        for_morph: z.string(),
+      }),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      _meta: {
-        ui: {
-          resourceUri: SIGNAL_BOARD_URI,
-          visibility: ["model", "app"],
-        },
-      },
+      _meta: { ui: { resourceUri: SIGNAL_BOARD_URI } },
     },
     async ({ for_morph, min_intensity, limit }) => {
       if (!DB.SIGNAL_BOARD) return { content: [{ type: "text", text: "Signal Board not configured." }], structuredContent: { signals: [], count: 0, for_morph } };
