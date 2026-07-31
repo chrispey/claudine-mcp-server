@@ -25,10 +25,42 @@ async function runStdio(): Promise<void> {
 
 async function runHttp(): Promise<void> {
   const port = parseInt(process.env.PORT ?? "3000", 10);
+  const HEALTH = JSON.stringify({ name: "claudine-mcp-server", version: "0.1.0", status: "ok" });
+  const NOT_FOUND = JSON.stringify({ error: "not_found" });
+
   const httpServer = http.createServer(async (req, res) => {
-    if (req.url === "/" || req.url === "/health") { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ name: "claudine-mcp-server", version: "0.1.0", status: "ok" })); return; }
-    if (req.method === "GET") { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ name: "claudine-mcp-server", version: "0.1.0", status: "ok" })); return; }
+    const path = (req.url ?? "/").split("?")[0];
+
+    if (req.method === "GET") {
+      // Only these three paths answer 200. Everything else MUST 404.
+      //
+      // A catch-all 200 here is what breaks connector sign-in: a client probing
+      // /.well-known/oauth-protected-resource or /.well-known/oauth-authorization-server
+      // reads any 200 as "this server publishes auth metadata", then attempts
+      // dynamic client registration and fails, because there is no OAuth here.
+      // A 404 is how a client learns this server needs no auth at all.
+      //
+      // /mcp must stay 200: railway.json sets it as healthcheckPath.
+      if (path === "/" || path === "/health" || path === "/mcp") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(HEALTH);
+        return;
+      }
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(NOT_FOUND);
+      return;
+    }
+
     if (req.method !== "POST") { res.writeHead(405); res.end("Method not allowed"); return; }
+
+    // Only these paths carry MCP traffic, so a POST to /register is not
+    // mistaken for an MCP request and answered as though it succeeded.
+    if (path !== "/mcp" && path !== "/") {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(NOT_FOUND);
+      return;
+    }
+
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     await server.connect(transport);
