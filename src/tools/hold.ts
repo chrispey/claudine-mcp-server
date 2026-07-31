@@ -21,7 +21,7 @@ import { SIGNAL_BOARD_HTML } from "../ui/signal-board.js";
  * support MCP Apps ignores `_meta.ui` and the tool behaves as a normal
  * text-only tool. The `content` array is populated either way.
  */
-const SIGNAL_BOARD_URI = "ui://claudine/signal-board-v2.html";
+const SIGNAL_BOARD_URI = "ui://claudine/signal-board-v4.html";
 
 export function registerHoldTools(server: McpServer): void {
 
