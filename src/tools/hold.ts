@@ -203,9 +203,18 @@ export function registerHoldTools(server: McpServer): void {
         text: SIGNAL_BOARD_HTML(),
         _meta: {
           ui: {
-            // No csp block: the view needs no external origins at all.
-            // Omitting it means the host applies its restrictive default,
-            // which is exactly what we want.
+            // Claude derives the view's sandbox origin from a hash of the
+            // connector URL and validates this field against it. Omitting it
+            // is why the host never fetched the view: it declines before
+            // issuing resources/read. Value is the first 32 hex characters of
+            // SHA-256 over the exact connector URL as entered in Claude
+            // settings, suffixed with .claudemcpcontent.com. Scheme and
+            // trailing slash are significant.
+            //   https://rare-growth-production-df89.up.railway.app/mcp
+            domain: "77caab9d31edcce54c10aebc2f984887.claudemcpcontent.com",
+            // No csp block: the view needs no external origins at all, so the
+            // host's restrictive default is correct. Claude enforces its own
+            // sandbox CSP regardless.
             prefersBorder: true,
           },
         },
