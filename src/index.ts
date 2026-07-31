@@ -23,6 +23,16 @@ async function runStdio(): Promise<void> {
   process.stderr.write("Claudine MCP server running (stdio)\n");
 }
 
+/** Read and JSON-parse the request body. The stream is consumed here, so the
+ *  parsed value must be handed to transport.handleRequest as its third arg. */
+async function readBody(req: http.IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  const raw = Buffer.concat(chunks).toString("utf8");
+  if (!raw) return undefined;
+  try { return JSON.parse(raw); } catch { return undefined; }
+}
+
 async function runHttp(): Promise<void> {
   const port = parseInt(process.env.PORT ?? "3000", 10);
   const HEALTH = JSON.stringify({ name: "claudine-mcp-server", version: "0.1.0", status: "ok" });
@@ -61,10 +71,28 @@ async function runHttp(): Promise<void> {
       return;
     }
 
+    const body = await readBody(req);
+
+    // ---- TEMPORARY DIAGNOSTIC ----------------------------------------
+    // Logs the client's initialize handshake so we can see whether it
+    // advertises the MCP Apps extension "io.modelcontextprotocol/ui".
+    // If that key is absent from capabilities.extensions, the client never
+    // claimed UI support and no amount of server-side correctness will make
+    // a view render. Remove this block once the question is answered.
+    if (body && typeof body === "object" && (body as { method?: string }).method === "initialize") {
+      const params = (body as { params?: Record<string, unknown> }).params ?? {};
+      process.stderr.write("[client-handshake] " + JSON.stringify({
+        protocolVersion: params["protocolVersion"],
+        clientInfo: params["clientInfo"],
+        capabilities: params["capabilities"],
+      }) + "\n");
+    }
+    // ---- END TEMPORARY DIAGNOSTIC ------------------------------------
+
     const server = createServer();
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     await server.connect(transport);
-    await transport.handleRequest(req, res);
+    await transport.handleRequest(req, res, body);
   });
   httpServer.listen(port, () => {
     process.stderr.write(`Claudine MCP server running (http) on port ${port}\n`);
