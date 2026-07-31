@@ -210,8 +210,8 @@ export function registerHoldTools(server: McpServer): void {
             // SHA-256 over the exact connector URL as entered in Claude
             // settings, suffixed with .claudemcpcontent.com. Scheme and
             // trailing slash are significant.
-            //   https://rare-growth-production-df89.up.railway.app/mcp
-            domain: "77caab9d31edcce54c10aebc2f984887.claudemcpcontent.com",
+            //   https://rare-growth-production-df89.up.railway.app  (bare origin, no path)
+            domain: "2e588b218efe209f7268e3b73d6786c0.claudemcpcontent.com",
             // No csp block: the view needs no external origins at all, so the
             // host's restrictive default is correct. Claude enforces its own
             // sandbox CSP regardless.
