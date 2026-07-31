@@ -206,7 +206,7 @@ export function registerHoldTools(server: McpServer): void {
             // No csp block: the view needs no external origins at all.
             // Omitting it means the host applies its restrictive default,
             // which is exactly what we want.
-            prefersBorder: false,
+            prefersBorder: true,
           },
         },
       }],
