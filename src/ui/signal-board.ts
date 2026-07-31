@@ -58,8 +58,27 @@ export function SIGNAL_BOARD_HTML(): string {
     font-family: var(--font-sans);
     font-size: var(--font-text-md-size);
     color: var(--color-text-primary);
-    background: transparent;
+    /* DIAGNOSTIC: opaque + bordered. A view that mounts but fails to paint
+       must not be indistinguishable from empty space. Revert to
+       background:transparent once mounting is confirmed. */
+    background: light-dark(#fffbeb, #2a2413);
+    border: 2px solid light-dark(#b45309, #f59e0b);
+    border-radius: 10px;
+    min-height: 90px;
   }
+  #diag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+    color: light-dark(#7c2d12, #fbbf24);
+    background: light-dark(#fef3c7, #3a3016);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  #diag b { font-weight: 700; letter-spacing: 0.04em; }
   header {
     display: flex;
     align-items: baseline;
@@ -178,6 +197,9 @@ export function SIGNAL_BOARD_HTML(): string {
   <h1 id="title">Signal Board</h1>
   <span class="count" id="count"></span>
 </header>
+<div id="diag"><b>CLAUDINE VIEW MOUNTED</b>
+This box is static HTML. If you can read it, the iframe rendered.
+status: script not yet executed</div>
 <div id="root"><div class="state" id="state">Connecting…</div></div>
 
 <script>
@@ -190,6 +212,19 @@ export function SIGNAL_BOARD_HTML(): string {
   var nextId = 1;
   var forMorph = null;
   var signals = [];
+
+  // ---- DIAGNOSTIC -----------------------------------------------------
+  var diagLines = [];
+  function diag(msg) {
+    diagLines.push(msg);
+    var el = document.getElementById("diag");
+    if (el) {
+      el.textContent = "CLAUDINE VIEW MOUNTED\\n" +
+        "This box is static HTML. If you can read it, the iframe rendered.\\n" +
+        diagLines.join("\\n");
+    }
+    reportSize();
+  }
 
   // ---- JSON-RPC over postMessage -------------------------------------
   // Written deliberately rather than using the spec's illustrative snippet,
@@ -446,16 +481,30 @@ export function SIGNAL_BOARD_HTML(): string {
 
   on("ui/resource-teardown", function (params, id) { respond(id, {}); });
 
+  diag("script executing, sending ui/initialize…");
+  // Report a size before the handshake, in case the host is sizing the frame
+  // from our notification and would otherwise leave it collapsed.
+  notify("ui/notifications/size-changed", { width: 600, height: 220 });
+
   request("ui/initialize", {
     protocolVersion: PROTOCOL,
     appCapabilities: { availableDisplayModes: ["inline"] },
     clientInfo: { name: "claudine-signal-board", version: "0.1.0" }
   }).then(function (res) {
+    var host = (res && res.hostInfo) || {};
+    diag("ui/initialize OK  host=" + (host.name || "?") + " " + (host.version || ""));
+    diag("displayMode=" + String(res && res.hostContext && res.hostContext.displayMode));
     applyTheme(res && res.hostContext);
     notify("ui/notifications/initialized", {});
     setState("Loading signals…");
     reportSize();
+    // Phone home through the host. If this lands, the server logs it, which
+    // proves the view is alive even if nothing is visible on screen.
+    return request("tools/call", { name: "claudine_get_contract", arguments: {} });
+  }).then(function () {
+    diag("tools/call round-trip OK — view is fully live");
   })["catch"](function (err) {
+    diag("FAILED: " + String(err && err.message ? err.message : err));
     setState("Could not reach host: " + String(err && err.message ? err.message : err));
   });
 })();
